@@ -43,6 +43,8 @@ typedef struct StatusInfo {
         const char *virtualization;
         const char *architecture;
         const char *home_url;
+        const char *vendor;
+        const char *model;
 } StatusInfo;
 
 static void print_status_info(StatusInfo *i) {
@@ -107,6 +109,13 @@ static void print_status_info(StatusInfo *i) {
         if (!isempty(i->architecture))
                 printf("      Architecture: %s\n", i->architecture);
 
+        if (!isempty(i->vendor))
+                printf("            Vendor: %s\n", i->vendor);
+
+        if (!isempty(i->model))
+                printf("             Model: %s\n", i->model);
+
+
 }
 
 static int show_one_name(sd_bus *bus, const char* attr) {
@@ -150,6 +159,8 @@ static int show_all_names(sd_bus *bus, sd_bus_error *error) {
                 { "OperatingSystemPrettyName", "s", NULL, offsetof(StatusInfo, os_pretty_name)  },
                 { "OperatingSystemCPEName",    "s", NULL, offsetof(StatusInfo, os_cpe_name)     },
                 { "HomeURL",                   "s", NULL, offsetof(StatusInfo, home_url)        },
+                { "Vendor",                    "s", NULL, offsetof(StatusInfo, vendor)          },
+                { "Model",                     "s", NULL, offsetof(StatusInfo, model)           },
                 {}
         };
 
