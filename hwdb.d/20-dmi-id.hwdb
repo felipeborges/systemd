@@ -1,0 +1,5 @@
+# This file is part of systemd
+
+# Fix "Lenovo" capitalization in /sys/class/dmi/id/sys_vendor
+dmi:bvnLENOVO*
+    ID_VENDOR_FROM_DATABASE=Lenovo
