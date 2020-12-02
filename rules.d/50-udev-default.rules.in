@@ -89,4 +89,7 @@ KERNEL=="udmabuf", GROUP="kvm"
 
 SUBSYSTEM=="ptp", ATTR{clock_name}=="KVM virtual PTP", SYMLINK += "ptp_kvm"
 
+SUBSYSTEM=="dmi", ATTR{sys_vendor}!="LENOVO", ENV{ID_VENDOR}="$attr{sys_vendor}", ENV{ID_MODEL}="$attr{product_name}"
+SUBSYSTEM=="dmi", ATTR{sys_vendor}=="LENOVO", ENV{ID_VENDOR}="$attr{sys_vendor}", ENV{ID_MODEL}="$attr{product_version}"
+
 LABEL="default_end"
