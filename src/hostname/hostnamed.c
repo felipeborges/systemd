@@ -430,6 +430,32 @@ static int context_write_data_machine_info(Context *c) {
         return write_env_file_label("/etc/machine-info", l);
 }
 
+// https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/sound/soc/soc-core.c?h=v5.10#n1476
+static const char * const dmi_blocklist[] = {
+        "To be filled by OEM",
+        "TBD by OEM",
+        "Default String",
+        "Board Manufacturer",
+        "Board Vendor Name",
+        "Board Product Name",
+        "N/A",
+        NULL,
+};
+
+static int is_dmi_valid(const char *field)
+{
+        int i = 0;
+
+        while(dmi_blocklist[i]) {
+                if (strstr(field, dmi_blocklist[i]))
+                        return 0;
+
+                i++;
+        }
+
+        return 1;
+}
+
 static int property_get_hardware_vendor(
                 sd_bus *bus,
                 const char *path,
@@ -448,8 +474,12 @@ static int property_get_hardware_vendor(
                 return sd_bus_message_append(reply, "s", NULL);
         }
 
-        if (sd_device_get_property_value(device, "ID_VENDOR_FROM_DATABASE", &hardware_vendor) < 0)
+        if (sd_device_get_property_value(device, "ID_VENDOR_FROM_DATABASE", &hardware_vendor) < 0) {
                 (void) sd_device_get_property_value(device, "ID_VENDOR", &hardware_vendor);
+
+                if (!is_dmi_valid(hardware_vendor))
+                        return sd_bus_message_append(reply, "s", NULL);
+        }
 
         return sd_bus_message_append(reply, "s", hardware_vendor);
 }
@@ -472,8 +502,12 @@ static int property_get_hardware_model(
                 return sd_bus_message_append(reply, "s", NULL);
         }
 
-        if (sd_device_get_property_value(device, "ID_MODEL_FROM_DATABASE", &hardware_model) < 0)
+        if (sd_device_get_property_value(device, "ID_MODEL_FROM_DATABASE", &hardware_model) < 0) {
                 (void) sd_device_get_property_value(device, "ID_MODEL", &hardware_model);
+
+                if (!is_dmi_valid(hardware_model))
+                       return sd_bus_message_append(reply, "s", NULL);
+        }
 
         return sd_bus_message_append(reply, "s", hardware_model);
 }
