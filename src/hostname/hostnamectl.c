@@ -62,6 +62,7 @@ typedef struct StatusInfo {
         const char *home_url;
         const char *hardware_vendor;
         const char *hardware_model;
+        const char *hardware_processor;
         const char *firmware_version;
         usec_t firmware_date;
         sd_id128_t machine_id;
@@ -324,6 +325,14 @@ static int print_status_info(StatusInfo *i) {
                         return table_log_add_error(r);
         }
 
+        if (!isempty(i->hardware_processor)) {
+                r = table_add_many(table,
+                                   TABLE_FIELD, "Hardware Processor",
+                                   TABLE_STRING, i->hardware_processor);
+                if (r < 0)
+                        return table_log_add_error(r);
+        }
+
         if (!isempty(i->hardware_serial)) {
                 r = table_add_many(table,
                                    TABLE_FIELD, "Hardware Serial",
@@ -436,11 +445,12 @@ static int show_all_names(sd_bus *bus) {
                 { "OperatingSystemImageID",      "s",  NULL,          offsetof(StatusInfo, os_image_id)      },
                 { "OperatingSystemImageVersion", "s",  NULL,          offsetof(StatusInfo, os_image_version) },
                 { "HomeURL",                     "s",  NULL,          offsetof(StatusInfo, home_url)         },
-                { "HardwareVendor",              "s",  NULL,          offsetof(StatusInfo, hardware_vendor)  },
-                { "HardwareModel",               "s",  NULL,          offsetof(StatusInfo, hardware_model)   },
-                { "HardwareSKU",                 "s",  NULL,          offsetof(StatusInfo, hardware_sku)     },
-                { "HardwareVersion",             "s",  NULL,          offsetof(StatusInfo, hardware_version) },
-                { "FirmwareVersion",             "s",  NULL,          offsetof(StatusInfo, firmware_version) },
+                { "HardwareVendor",              "s",  NULL,          offsetof(StatusInfo, hardware_vendor)    },
+                { "HardwareModel",               "s",  NULL,          offsetof(StatusInfo, hardware_model)     },
+                { "HardwareProcessor",           "s",  NULL,          offsetof(StatusInfo, hardware_processor) },
+                { "HardwareSKU",                 "s",  NULL,          offsetof(StatusInfo, hardware_sku)       },
+                { "HardwareVersion",             "s",  NULL,          offsetof(StatusInfo, hardware_version)   },
+                { "FirmwareVersion",             "s",  NULL,          offsetof(StatusInfo, firmware_version)   },
                 { "FirmwareDate",                "t",  NULL,          offsetof(StatusInfo, firmware_date)    },
                 { "MachineID",                   "ay", bus_map_id128, offsetof(StatusInfo, machine_id)       },
                 { "BootID",                      "ay", bus_map_id128, offsetof(StatusInfo, boot_id)          },

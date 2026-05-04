@@ -17,6 +17,7 @@ hwdb_files_notest = files(
         '20-vmbus-class.hwdb')
 
 hwdb_files_test = files(
+        '20-cpu.hwdb',
         '20-dmi-id.hwdb',
         '20-net-ifname.hwdb',
         '40-imds.hwdb',

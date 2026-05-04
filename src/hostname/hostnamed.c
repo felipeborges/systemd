@@ -7,9 +7,11 @@
 #include "sd-bus.h"
 #include "sd-device.h"
 #include "sd-event.h"
+#include "sd-hwdb.h"
 #include "sd-json.h"
 
 #include "alloc-util.h"
+#include "architecture.h"
 #include "bitfield.h"
 #include "bus-common-errors.h"
 #include "bus-get-properties.h"
@@ -23,6 +25,7 @@
 #include "env-file.h"
 #include "env-util.h"
 #include "extract-word.h"
+#include "fd-util.h"
 #include "fileio.h"
 #include "hashmap.h"
 #include "hostname-setup.h"
@@ -67,6 +70,7 @@ typedef enum {
         PROP_HARDWARE_MODEL,
         PROP_HARDWARE_SKU,
         PROP_HARDWARE_VERSION,
+        PROP_HARDWARE_PROCESSOR,
 
         /* Read from /etc/os-release (or /usr/lib/os-release) */
         PROP_OS_PRETTY_NAME,
@@ -430,6 +434,168 @@ static int get_hardware_version(Context *c, char **ret) {
 
         *ret = TAKE_PTR(version);
         return 0;
+}
+
+/* Inspired on the src/basic/virt.c /proc/cpuinfo parsing code. */
+static int get_cpuinfo_field(const char *field, char **ret) {
+        _cleanup_fclose_ FILE *f = NULL;
+        _cleanup_free_ char *pattern = NULL;
+        int r;
+
+        assert(field);
+        assert(ret);
+
+        pattern = strjoin(field, "\t: ");
+        if (!pattern)
+                return -ENOMEM;
+
+        f = fopen("/proc/cpuinfo", "re");
+        if (!f)
+                return -errno;
+
+        for (;;) {
+                _cleanup_free_ char *line = NULL;
+                const char *t;
+
+                r = read_line(f, LONG_LINE_MAX, &line);
+                if (r < 0)
+                        return r;
+                if (r == 0)
+                        return -ENOENT;
+
+                t = startswith(line, pattern);
+                if (t) {
+                        *ret = strdup(t);
+                        if (!*ret)
+                                return -ENOMEM;
+                        return 0;
+                }
+        }
+}
+
+static int get_arm_processor_description(sd_hwdb *hwdb, char **ret) {
+        _cleanup_free_ char *implementer_str = NULL, *part_str = NULL;
+        _cleanup_free_ char *implementer_name = NULL, *model_name = NULL;
+        const char *key, *value;
+        unsigned implementer, part;
+        _cleanup_free_ char *modalias = NULL;
+        Architecture arch;
+        const char *arch_str;
+        int r;
+
+        assert(hwdb);
+        assert(ret);
+
+        r = get_cpuinfo_field("CPU implementer", &implementer_str);
+        if (r < 0)
+                return r;
+
+        r = get_cpuinfo_field("CPU part", &part_str);
+        if (r < 0)
+                return r;
+
+        r = safe_atou_full(implementer_str, 0, &implementer);
+        if (r < 0)
+                return r;
+
+        r = safe_atou_full(part_str, 0, &part);
+        if (r < 0)
+                return r;
+
+        arch = uname_architecture();
+        switch (arch) {
+        case ARCHITECTURE_ARM64:
+        case ARCHITECTURE_ARM64_BE:
+                arch_str = "aarch64";
+                break;
+        case ARCHITECTURE_ARM:
+        case ARCHITECTURE_ARM_BE:
+                arch_str = "arm";
+                break;
+        default:
+                return -EOPNOTSUPP;
+        }
+
+       /* Build hwdb lookup key: cpu:ARCH:implementer:XXXX:part:YYYY
+        *
+        * The kernel CPU modalias on ARM only exposes HWCAP feature bits, not the CPU
+        * implementer/part IDs. So we define our own custom hwdb identifier format based on
+        * /proc/cpuinfo data. */
+        if (asprintf(&modalias, "cpu:%s:implementer:0x%x:part:0x%x", arch_str, implementer, part) < 0)
+                return -ENOMEM;
+
+        SD_HWDB_FOREACH_PROPERTY(hwdb, modalias, key, value) {
+                if (streq(key, "ID_CPU_IMPLEMENTER")) {
+                        r = free_and_strdup(&implementer_name, value);
+                        if (r < 0)
+                                return r;
+                } else if (streq(key, "ID_CPU_MODEL")) {
+                        r = free_and_strdup(&model_name, value);
+                        if (r < 0)
+                                return r;
+                }
+        }
+
+        if (implementer_name && model_name)
+                return strdup_to(ret, strjoina(implementer_name, " ", model_name));
+        else if (implementer_name)
+                return asprintf(ret, "%s (part 0x%x)", implementer_name, part);
+        else
+                return asprintf(ret, "ARM (implementer 0x%x, part 0x%x)", implementer, part);
+}
+
+static int get_x86_processor_description(char **ret) {
+        assert(ret);
+
+        return get_cpuinfo_field("model name", ret);
+}
+
+static int get_generic_processor_description(char **ret) {
+        int r;
+
+        assert(ret);
+
+        r = get_cpuinfo_field("model", ret);
+        if (r >= 0)
+                return 0;
+
+        r = get_cpuinfo_field("cpu", ret);
+        if (r >= 0)
+                return 0;
+
+        return -ENOENT;
+}
+
+static int get_hardware_processor(Context *c, char **ret) {
+        _cleanup_(sd_hwdb_unrefp) sd_hwdb *hwdb = NULL;
+        Architecture arch;
+        int r;
+
+        assert(ret);
+
+        arch = uname_architecture();
+
+        switch (arch) {
+        case ARCHITECTURE_ARM:
+        case ARCHITECTURE_ARM_BE:
+        case ARCHITECTURE_ARM64:
+        case ARCHITECTURE_ARM64_BE:
+                /* ARM needs hwdb lookup */
+                r = sd_hwdb_new(&hwdb);
+                if (r < 0)
+                        return r;
+
+                return get_arm_processor_description(hwdb, ret);
+
+        case ARCHITECTURE_X86:
+        case ARCHITECTURE_X86_64:
+                /* x86 has model name directly in /proc/cpuinfo */
+                return get_x86_processor_description(ret);
+
+        default:
+                /* Try generic approach for other architectures */
+                return get_generic_processor_description(ret);
+        }
 }
 
 static int get_sysattr(sd_device *device, const char *key, char **ret) {
@@ -908,12 +1074,12 @@ static int property_get_hardware_property(
         assert(reply);
         assert(c);
         assert(IN_SET(prop, PROP_HARDWARE_VENDOR, PROP_HARDWARE_MODEL,
-                      PROP_HARDWARE_SKU, PROP_HARDWARE_VERSION));
+                      PROP_HARDWARE_SKU, PROP_HARDWARE_VERSION, PROP_HARDWARE_PROCESSOR));
         assert(getter);
 
         context_read_machine_info(c);
 
-        if (isempty(c->data[prop]))
+        if (prop == PROP_HARDWARE_PROCESSOR || isempty(c->data[prop]))
                 (void) getter(c, &from_dmi);
 
         return sd_bus_message_append(reply, "s", from_dmi ?: c->data[prop]);
@@ -965,6 +1131,18 @@ static int property_get_hardware_version(
                 sd_bus_error *error) {
 
         return property_get_hardware_property(reply, userdata, PROP_HARDWARE_VERSION, get_hardware_version);
+}
+
+static int property_get_hardware_processor(
+                sd_bus *bus,
+                const char *path,
+                const char *interface,
+                const char *property,
+                sd_bus_message *reply,
+                void *userdata,
+                sd_bus_error *error) {
+
+        return property_get_hardware_property(reply, userdata, PROP_HARDWARE_PROCESSOR, get_hardware_processor);
 }
 
 static int property_get_firmware_version(
@@ -1654,10 +1832,11 @@ static int method_get_machine_info(sd_bus_message *m, void *userdata, sd_bus_err
                 { "CHASSIS",          PROP_CHASSIS          },
                 { "DEPLOYMENT",       PROP_DEPLOYMENT       },
                 { "LOCATION",         PROP_LOCATION         },
-                { "HARDWARE_VENDOR",  PROP_HARDWARE_VENDOR  },
-                { "HARDWARE_MODEL",   PROP_HARDWARE_MODEL   },
-                { "HARDWARE_SKU",     PROP_HARDWARE_SKU     },
-                { "HARDWARE_VERSION", PROP_HARDWARE_VERSION },
+                { "HARDWARE_VENDOR",    PROP_HARDWARE_VENDOR    },
+                { "HARDWARE_MODEL",     PROP_HARDWARE_MODEL     },
+                { "HARDWARE_SKU",       PROP_HARDWARE_SKU       },
+                { "HARDWARE_VERSION",   PROP_HARDWARE_VERSION   },
+                { "HARDWARE_PROCESSOR", PROP_HARDWARE_PROCESSOR },
         };
 
         Context *c = ASSERT_PTR(userdata);
@@ -1706,7 +1885,8 @@ static int method_get_machine_info(sd_bus_message *m, void *userdata, sd_bus_err
 static int build_describe_response(Context *c, bool privileged, sd_json_variant **ret) {
         _cleanup_free_ char *hn = NULL, *dhn = NULL, *in = NULL,
                 *chassis = NULL, *vendor = NULL, *model = NULL, *serial = NULL, *firmware_version = NULL,
-                *firmware_vendor = NULL, *chassis_asset_tag = NULL, *sku = NULL, *hardware_version = NULL;
+                *firmware_vendor = NULL, *chassis_asset_tag = NULL, *sku = NULL, *hardware_version = NULL,
+                *processor = NULL;
         _cleanup_strv_free_ char **os_release_pairs = NULL, **machine_info_pairs = NULL;
         usec_t firmware_date = USEC_INFINITY, eol = USEC_INFINITY;
         _cleanup_(sd_json_variant_unrefp) sd_json_variant *v = NULL;
@@ -1746,6 +1926,8 @@ static int build_describe_response(Context *c, bool privileged, sd_json_variant 
                 (void) get_hardware_sku(c, &sku);
         if (isempty(c->data[PROP_HARDWARE_VERSION]))
                 (void) get_hardware_version(c, &hardware_version);
+        if (isempty(c->data[PROP_HARDWARE_PROCESSOR]))
+                (void) get_hardware_processor(c, &processor);
 
         if (privileged) {
                 /* The product UUID and hardware serial is only available to privileged clients */
@@ -1802,6 +1984,7 @@ static int build_describe_response(Context *c, bool privileged, sd_json_variant 
                         SD_JSON_BUILD_PAIR_STRING("HardwareSerial", serial),
                         SD_JSON_BUILD_PAIR_STRING("HardwareSKU", sku ?: c->data[PROP_HARDWARE_SKU]),
                         SD_JSON_BUILD_PAIR_STRING("HardwareVersion", hardware_version ?: c->data[PROP_HARDWARE_VERSION]),
+                        SD_JSON_BUILD_PAIR_STRING("HardwareProcessor", processor ?: c->data[PROP_HARDWARE_PROCESSOR]),
                         SD_JSON_BUILD_PAIR_STRING("FirmwareVersion", firmware_version),
                         SD_JSON_BUILD_PAIR_STRING("FirmwareVendor", firmware_vendor),
                         JSON_BUILD_PAIR_FINITE_USEC("FirmwareDate", firmware_date),
@@ -1876,6 +2059,7 @@ static const sd_bus_vtable hostname_vtable[] = {
         SD_BUS_PROPERTY("HardwareModel", "s", property_get_hardware_model, 0, SD_BUS_VTABLE_PROPERTY_CONST),
         SD_BUS_PROPERTY("HardwareSKU", "s", property_get_hardware_sku, 0, SD_BUS_VTABLE_PROPERTY_CONST),
         SD_BUS_PROPERTY("HardwareVersion", "s", property_get_hardware_version, 0, SD_BUS_VTABLE_PROPERTY_CONST),
+        SD_BUS_PROPERTY("HardwareProcessor", "s", property_get_hardware_processor, 0, SD_BUS_VTABLE_PROPERTY_CONST),
         SD_BUS_PROPERTY("FirmwareVersion", "s", property_get_firmware_version, 0, SD_BUS_VTABLE_PROPERTY_CONST),
         SD_BUS_PROPERTY("FirmwareVendor", "s", property_get_firmware_vendor, 0, SD_BUS_VTABLE_PROPERTY_CONST),
         SD_BUS_PROPERTY("FirmwareDate", "t", property_get_firmware_date, 0, SD_BUS_VTABLE_PROPERTY_CONST),

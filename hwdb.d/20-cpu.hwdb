@@ -1,0 +1,257 @@
+# This file is part of systemd.
+#
+# systemd is free software; you can redistribute it and/or modify it
+# under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation; either version 2.1 of the License, or
+# (at your option) any later version.
+
+#########################################
+# ARM/AArch64 CPU Model Names
+#########################################
+
+# Format:
+# cpu:*:implementer:XXXX:part:YYYY
+#  ID_CPU_IMPLEMENTER=<Vendor Name>
+#  ID_CPU_MODEL=<Model Name>
+#
+# The kernel does not expose CPU implementer/part IDs via the standard
+# CPU modalias on ARM, only HWCAP feature bits. So we define our own
+# hwdb identifier format based on /proc/cpuinfo data.
+
+###########
+# ARM Ltd.
+###########
+
+cpu:*:implementer:0x41:part:0xd03
+ ID_CPU_IMPLEMENTER=ARM
+ ID_CPU_MODEL=Cortex-A53
+
+cpu:*:implementer:0x41:part:0xd04
+ ID_CPU_IMPLEMENTER=ARM
+ ID_CPU_MODEL=Cortex-A35
+
+cpu:*:implementer:0x41:part:0xd05
+ ID_CPU_IMPLEMENTER=ARM
+ ID_CPU_MODEL=Cortex-A55
+
+cpu:*:implementer:0x41:part:0xd07
+ ID_CPU_IMPLEMENTER=ARM
+ ID_CPU_MODEL=Cortex-A57
+
+cpu:*:implementer:0x41:part:0xd08
+ ID_CPU_IMPLEMENTER=ARM
+ ID_CPU_MODEL=Cortex-A72
+
+cpu:*:implementer:0x41:part:0xd09
+ ID_CPU_IMPLEMENTER=ARM
+ ID_CPU_MODEL=Cortex-A73
+
+cpu:*:implementer:0x41:part:0xd0a
+ ID_CPU_IMPLEMENTER=ARM
+ ID_CPU_MODEL=Cortex-A75
+
+cpu:*:implementer:0x41:part:0xd0b
+ ID_CPU_IMPLEMENTER=ARM
+ ID_CPU_MODEL=Cortex-A76
+
+cpu:*:implementer:0x41:part:0xd0c
+ ID_CPU_IMPLEMENTER=ARM
+ ID_CPU_MODEL=Neoverse N1
+
+cpu:*:implementer:0x41:part:0xd0d
+ ID_CPU_IMPLEMENTER=ARM
+ ID_CPU_MODEL=Cortex-A77
+
+cpu:*:implementer:0x41:part:0xd40
+ ID_CPU_IMPLEMENTER=ARM
+ ID_CPU_MODEL=Neoverse V1
+
+cpu:*:implementer:0x41:part:0xd41
+ ID_CPU_IMPLEMENTER=ARM
+ ID_CPU_MODEL=Cortex-A78
+
+cpu:*:implementer:0x41:part:0xd44
+ ID_CPU_IMPLEMENTER=ARM
+ ID_CPU_MODEL=Cortex-X1
+
+cpu:*:implementer:0x41:part:0xd46
+ ID_CPU_IMPLEMENTER=ARM
+ ID_CPU_MODEL=Cortex-A510
+
+cpu:*:implementer:0x41:part:0xd47
+ ID_CPU_IMPLEMENTER=ARM
+ ID_CPU_MODEL=Cortex-A710
+
+cpu:*:implementer:0x41:part:0xd48
+ ID_CPU_IMPLEMENTER=ARM
+ ID_CPU_MODEL=Cortex-X2
+
+cpu:*:implementer:0x41:part:0xd49
+ ID_CPU_IMPLEMENTER=ARM
+ ID_CPU_MODEL=Neoverse N2
+
+cpu:*:implementer:0x41:part:0xd4d
+ ID_CPU_IMPLEMENTER=ARM
+ ID_CPU_MODEL=Cortex-A715
+
+cpu:*:implementer:0x41:part:0xd4e
+ ID_CPU_IMPLEMENTER=ARM
+ ID_CPU_MODEL=Cortex-X3
+
+cpu:*:implementer:0x41:part:0xd80
+ ID_CPU_IMPLEMENTER=ARM
+ ID_CPU_MODEL=Cortex-A520
+
+cpu:*:implementer:0x41:part:0xd81
+ ID_CPU_IMPLEMENTER=ARM
+ ID_CPU_MODEL=Cortex-A720
+
+cpu:*:implementer:0x41:part:0xd82
+ ID_CPU_IMPLEMENTER=ARM
+ ID_CPU_MODEL=Cortex-X4
+
+#############
+# Qualcomm
+#############
+
+cpu:*:implementer:0x51:part:0x001
+ ID_CPU_IMPLEMENTER=Qualcomm
+ ID_CPU_MODEL=Oryon
+
+cpu:*:implementer:0x51:part:0x002
+ ID_CPU_IMPLEMENTER=Qualcomm
+ ID_CPU_MODEL=Kryo
+
+cpu:*:implementer:0x51:part:0x200
+ ID_CPU_IMPLEMENTER=Qualcomm
+ ID_CPU_MODEL=Kryo
+
+cpu:*:implementer:0x51:part:0x201
+ ID_CPU_IMPLEMENTER=Qualcomm
+ ID_CPU_MODEL=Kryo Silver
+
+cpu:*:implementer:0x51:part:0x205
+ ID_CPU_IMPLEMENTER=Qualcomm
+ ID_CPU_MODEL=Kryo Gold Prime
+
+cpu:*:implementer:0x51:part:0x211
+ ID_CPU_IMPLEMENTER=Qualcomm
+ ID_CPU_MODEL=Kryo Silver
+
+cpu:*:implementer:0x51:part:0xc00
+ ID_CPU_IMPLEMENTER=Qualcomm
+ ID_CPU_MODEL=Falkor
+
+cpu:*:implementer:0x51:part:0xc01
+ ID_CPU_IMPLEMENTER=Qualcomm
+ ID_CPU_MODEL=Saphira
+
+##########
+# Apple
+##########
+
+cpu:*:implementer:0x61:part:0x020
+ ID_CPU_IMPLEMENTER=Apple
+ ID_CPU_MODEL=M1 Icestorm
+
+cpu:*:implementer:0x61:part:0x021
+ ID_CPU_IMPLEMENTER=Apple
+ ID_CPU_MODEL=M1 Firestorm
+
+cpu:*:implementer:0x61:part:0x022
+ ID_CPU_IMPLEMENTER=Apple
+ ID_CPU_MODEL=M1 Pro Icestorm
+
+cpu:*:implementer:0x61:part:0x023
+ ID_CPU_IMPLEMENTER=Apple
+ ID_CPU_MODEL=M1 Pro Firestorm
+
+cpu:*:implementer:0x61:part:0x024
+ ID_CPU_IMPLEMENTER=Apple
+ ID_CPU_MODEL=M1 Max Icestorm
+
+cpu:*:implementer:0x61:part:0x025
+ ID_CPU_IMPLEMENTER=Apple
+ ID_CPU_MODEL=M1 Max Firestorm
+
+cpu:*:implementer:0x61:part:0x028
+ ID_CPU_IMPLEMENTER=Apple
+ ID_CPU_MODEL=M2 Blizzard
+
+cpu:*:implementer:0x61:part:0x029
+ ID_CPU_IMPLEMENTER=Apple
+ ID_CPU_MODEL=M2 Avalanche
+
+###########
+# Fujitsu
+###########
+
+cpu:*:implementer:0x46:part:0x001
+ ID_CPU_IMPLEMENTER=Fujitsu
+ ID_CPU_MODEL=A64FX
+
+#############
+# HiSilicon
+#############
+
+cpu:*:implementer:0x48:part:0xd01
+ ID_CPU_IMPLEMENTER=HiSilicon
+ ID_CPU_MODEL=Cortex-A53
+
+cpu:*:implementer:0x48:part:0xd40
+ ID_CPU_IMPLEMENTER=HiSilicon
+ ID_CPU_MODEL=Cortex-A76
+
+##########
+# Ampere
+##########
+
+cpu:*:implementer:0xc0:part:0xac3
+ ID_CPU_IMPLEMENTER=Ampere
+ ID_CPU_MODEL=Ampere-1
+
+cpu:*:implementer:0xc0:part:0xac4
+ ID_CPU_IMPLEMENTER=Ampere
+ ID_CPU_MODEL=Ampere-1A
+
+##############
+# Broadcom
+##############
+
+cpu:*:implementer:0x42
+ ID_CPU_IMPLEMENTER=Broadcom
+
+###########
+# Cavium
+###########
+
+cpu:*:implementer:0x43
+ ID_CPU_IMPLEMENTER=Cavium
+
+##########
+# NVIDIA
+##########
+
+cpu:*:implementer:0x4e
+ ID_CPU_IMPLEMENTER=NVIDIA
+
+###########
+# Samsung
+###########
+
+cpu:*:implementer:0x53
+ ID_CPU_IMPLEMENTER=Samsung
+
+###########
+# Marvell
+###########
+
+cpu:*:implementer:0x56
+ ID_CPU_IMPLEMENTER=Marvell
+
+#############
+# Microsoft
+#############
+
+cpu:*:implementer:0x6d
+ ID_CPU_IMPLEMENTER=Microsoft
